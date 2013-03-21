@@ -1,7 +1,7 @@
 Given /^a mapping exists for '(.*)' to '(.*)' with tag '(.*)'$/ do |source, target, mapping_tag|
   @direction = {:from => source.to_sym, :to => target.to_sym}
   @tag = mapping_tag
-  
+
   case @direction
   when {:from => :xml, :to => :hash}
     Babelicious::Mapper.config(@tag.to_sym) do |m|
@@ -50,16 +50,34 @@ Given /^a mapping exists with '(.*)' condition$/ do |condition|
       m.map :from => "foo/bar", :to => "bar/foo"
       m.map(:from => "foo/baz", :to => "bar/boo").unless(:empty)
     end
- when /when/
+  when /when/
     Babelicious::Mapper.config(:when) do |m|
       m.direction :from => :xml, :to => :hash
 
       m.map(:from => "foo/bar", :to => "bar/foo").when do |value|
         value =~ /hubba/
-      end 
+      end
       m.map(:from => "foo/baz", :to => "bar/boo").when do |value|
         value =~ /bubba/
-      end 
+      end
+    end
+  end
+end
+
+Given /^a hash to xml mapping exists with '(.*)' condition$/ do |condition|
+  case condition
+  when /unless/
+    Babelicious::Mapper.config(:ignore_empty_array) do |m|
+      m.direction :from => :hash, :to => :xml
+
+      m.map :from => "foo/bar", :to => "bar/foo"
+      m.map(:from => "foo/baz", :to => "bar").unless(:empty).customize do |source|
+        node = new_node("boos")
+        source.each do |boo|
+          node << new_node("boo", boo)
+        end
+        node
+      end
     end
   end
 end
@@ -78,22 +96,22 @@ end
 Given /^a customized mapping exists for '(.*)' to '(.*)' with tag '(.*)'$/ do |source, target, tag|
   @mapping_tag = tag.to_sym
   @direction = {:from => source.to_sym, :to => target.to_sym}
-  
+
   case @direction
   when {:from => :xml, :to => :hash}
     Babelicious::Mapper.config(@mapping_tag.to_sym) do |m|
       m.direction @direction
-      
+
       m.map(:from => "event/progress/statuses", :to => "event/new_update_status_code").customize do |node|
         res = []
         node.elements.map { |nd| res << {"name" => nd.child_content("code"), "text" => nd.child_content("message")} }
         res
       end
-    end 
+    end
   when {:from => :hash, :to => :xml}
     Babelicious::Mapper.config(@mapping_tag.to_sym) do |m|
       m.direction @direction
-      
+
       m.map(:from => "event/rankings", :to => "event/response").customize do |val|
         node = new_node("rankings") do |rankings|
 
@@ -104,40 +122,40 @@ Given /^a customized mapping exists for '(.*)' to '(.*)' with tag '(.*)'$/ do |s
               ranking << new_node("value", rnk["ranking"]["value"])
 
               ranking << new_node("rules") do |rules|
-                rnk["ranking"]["rules"].each do |rl| 
+                rnk["ranking"]["rules"].each do |rl|
                   rule = new_node("rule") << rl["rule"]
                   rules << rule
-                end 
-              end 
+                end
+              end
 
               ranking << new_node("potential_event") do |potential_event|
-                rnk["ranking"]["potential_event"].each do |e| 
+                rnk["ranking"]["potential_event"].each do |e|
                   institution = new_node("institutions") << e["institutions"]
                   potential_event << institution
-                end 
-              end 
+                end
+              end
 
-            end 
+            end
 
-          end 
-        end 
+          end
+        end
       end
-    end 
-  end 
+    end
+  end
 
 end
 
 Given /^a mapping exists with a customized block$/ do
   Babelicious::Mapper.config(:customized) do |m|
     m.direction :from => :xml, :to => :hash
-    
+
     # <event><progress><statuses><status><code>Abandoned</code><message>bad phone</message></status></statuses></progress></event>
     m.map(:from => "event/progress/statuses", :to => "event/new_update_status_code").customize do |node|
       res = []
       node.elements.map { |nd| res << {"name" => nd.child_content("code"), "text" => nd.child_content("message")} }
       res
     end
-  end 
+  end
 end
 
 Given /^a mapping exists with custom \.to method$/ do
@@ -148,11 +166,11 @@ Given /^a mapping exists with custom \.to method$/ do
     m.from("foo/bar").to do |value|
       if(value == "baz")
         "value/was/baz"
-      else 
+      else
         "value/was/not/baz"
-      end 
+      end
     end
-  end 
+  end
 end
 
 Given /^a mapping exists with include$/ do
@@ -248,8 +266,16 @@ When /^the '(.*)' mapping is translated$/ do |condition|
   end
 end
 
+When /^the hash is translated with the '(.*)' condition/ do |condition|
+  case condition
+  when /unless/
+    hash = {:foo => {:bar => "a", :baz => [] } }
+    @translation = Babelicious::Mapper.translate(:ignore_empty_array, hash)
+  end
+end
+
 When /^the mapping with concatenation is translated$/ do
-#  xml = '<foo><bar>a</bar><baz>b</baz><cuk><coo>c</coo><coo>d</coo><coo>e</coo></cuk></foo>' 
+#  xml = '<foo><bar>a</bar><baz>b</baz><cuk><coo>c</coo><coo>d</coo><coo>e</coo></cuk></foo>'
   xml = <<-EOL
 <event>
  <decision_request>
@@ -289,34 +315,34 @@ When /^the customized mapping is translated$/ do
 EOL
     @translation = Babelicious::Mapper.translate(@mapping_tag.to_sym, xml)
   when {:from => :hash, :to => :xml}
-    hash = 
-    { "event" => 
+    hash =
+    { "event" =>
       {"rankings"=>
         [
          {"ranking"=>{
              "rules"=> [
                         {"rule"=>"pace_adjusted_revenue"}
-                       ], 
-             "rank"=>1, 
-             "value"=>0.0, 
+                       ],
+             "rank"=>1,
+             "value"=>0.0,
              "potential_event"=>[{"institutions"=>"AcmeU"}]
            }
          },
          {"ranking"=> {"rules"=>
              [
               {"rule"=>"clipped"}
-             ], 
-             "rank"=>2, 
-             "value"=>0.0, 
+             ],
+             "rank"=>2,
+             "value"=>0.0,
              "potential_event"=>[{"institutions"=>"BraUn"}]
            }
          }
         ],
         "decision_point"=>"LMP_Insti"
       }
-    }      
+    }
     @translation = Babelicious::Mapper.translate(@mapping_tag.to_sym, hash)
-  end 
+  end
 end
 
 When /^the mapping with custom \.to method is translated$/ do
@@ -362,7 +388,7 @@ Then /^the xml should be correctly mapped$/ do
   when {:from => :xml, :to => :hash}
     @translation.should == {"doo"=>"d", "foo"=>{"bar"=>{"coo"=>"c"}}, "bar"=>{"boo"=>"b", "foo"=>"a"}}
   when {:from => :hash, :to => :xml}
-    @translation.to_s.gsub(/\s/, '').should == '<?xmlversion="1.0"encoding="UTF-8"?><bar><foo>a</foo><boo>b</boo><cuk><coo>c</coo><doo>d</doo></cuk></bar>'    
+    @translation.to_s.gsub(/\s/, '').should == '<?xmlversion="1.0"encoding="UTF-8"?><bar><foo>a</foo><boo>b</boo><cuk><coo>c</coo><doo>d</doo></cuk></bar>'
   when {:from => :hash, :to => :hash}
     @translation.should == {"zoo" => "a", "yoo" => "b", "too" => "c", "soo" => {"roo" => "d"}}
   when {:from => :object, :to => :xml}
@@ -376,7 +402,15 @@ Then /^the target should be correctly processed for condition '(.*)'$/ do |condi
     @translation.should == {"bar" => {"foo" => "a"}}
   when /when/
     @translation.should == {"bar" => {"boo" => "hubbabubba"}}
-  end 
+  end
+end
+
+Then /^the xml target should be correctly processed for condition '(.*)'$/ do |condition|
+  case condition
+  when /unless/
+    translation = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><bar><foo>a</foo></bar>"
+    @translation.to_s.gsub(/\s/, '').should == translation.to_s.gsub(/\s/, '')
+  end
 end
 
 Then /^the target should be properly concatenated$/ do
@@ -419,7 +453,7 @@ Then /^the customized target should be correctly processed$/ do
   </response>
 </event>
 EOL
-  end 
+  end
     @translation.to_s.gsub(/\s/, '').should == translation.to_s.gsub(/\s/, '')
 
 #  @translation.should == {"new_update_status_code"=>[{"name"=>"Abandoned", "text"=>"bad phone"}, {"name"=>"Rejected", "text"=>"bad word"}]}

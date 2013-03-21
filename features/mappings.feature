@@ -12,20 +12,29 @@ Scenario Outline: Mapping xml, hash, and object
   | hash   | hash   | baz        |
   | object | xml    | boo        |
 
-Scenario Outline: Mapping with conditions
+Scenario Outline: Mapping xml to hash with conditions
   Given a mapping exists with '<Condition>' condition
   When the '<Condition>' mapping is translated
   Then the target should be correctly processed for condition '<Condition>'
 
   Examples:
   | Condition	|
-  | unless	|
-  | when	|
+  | unless  |
+  | when  |
+
+Scenario Outline: Mapping hash to xml with conditions
+  Given a hash to xml mapping exists with '<Condition>' condition
+  When the hash is translated with the '<Condition>' condition
+  Then the xml target should be correctly processed for condition '<Condition>'
+
+  Examples:
+  | Condition |
+  | unless |
 
 Scenario Outline: Mapping hash with custom block
   Given a customized mapping exists for '<Source>' to '<Target>' with tag '<MappingTag>'
   When the customized mapping is translated
-  Then the customized target should be correctly processed 
+  Then the customized target should be correctly processed
 
   Examples:
   | Source | Target | MappingTag |
@@ -50,12 +59,12 @@ Scenario: Mapping with .prepopulate
 Scenario: Including mappings from another map definition
   Given a mapping exists with include
   When the mapping with include is translated
-  Then the target should have mappings included from different map 
+  Then the target should have mappings included from different map
 
 Scenario: Including mappings from another map definition with nesting
   Given a contact mapping exists with nested include
   When the mapping with nested include is translated
-  Then the target should have nested mappings included from different map 
+  Then the target should have nested mappings included from different map
 
 Scenario: Reverse existing mapping
   Given a mapping exists for 'hash' to 'xml' with tag 'reverse_contact'
